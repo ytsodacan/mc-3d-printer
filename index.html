@@ -6,12 +6,8 @@
     <title>MC Skin Architect Pro</title>
     <style>
         :root { --accent: #00ff88; --bg: #0f0f0f; --panel: #1a1a1a; }
-        body { margin: 0; background: var(--bg); color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; height: 100vh; overflow: hidden; }
-        #toolbar { 
-            width: 300px; background: var(--panel); padding: 20px; 
-            border-right: 1px solid #333; display: flex; flex-direction: column; gap: 15px;
-            box-shadow: 5px 0 15px rgba(0,0,0,0.5); z-index: 10;
-        }
+        body { margin: 0; background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; }
+        #toolbar { width: 300px; background: var(--panel); padding: 20px; border-right: 1px solid #333; display: flex; flex-direction: column; gap: 15px; z-index: 10; }
         #canvas-container { flex-grow: 1; position: relative; }
         @media (max-width: 768px) {
             body { flex-direction: column; }
@@ -21,14 +17,9 @@
         h1 { font-size: 1.1rem; margin: 0; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; }
         .group { display: flex; flex-direction: column; gap: 5px; border-bottom: 1px solid #333; padding-bottom: 15px; }
         label { font-size: 0.7rem; color: #888; text-transform: uppercase; font-weight: bold; }
-        input, select, button { 
-            background: #252525; border: 1px solid #444; color: white; padding: 10px; 
-            border-radius: 4px; font-size: 0.85rem; transition: 0.2s;
-        }
-        button { background: var(--accent); color: black; font-weight: bold; border: none; cursor: pointer; margin-top: 5px; }
-        button:hover { background: #00cc6e; transform: translateY(-1px); }
+        input, select, button { background: #252525; border: 1px solid #444; color: white; padding: 10px; border-radius: 4px; font-size: 0.85rem; }
+        button { background: var(--accent); color: black; font-weight: bold; border: none; cursor: pointer; }
         .secondary { background: #444; color: white; }
-        #status { font-size: 0.7rem; color: var(--accent); margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -37,9 +28,9 @@
     <h1>Skin Architect</h1>
     <div class="group">
         <label>Import Skin</label>
-        <input type="text" id="username" placeholder="Username (e.g. Dream)">
-        <button id="fetchBtn">FETCH FROM MOJANG</button>
-        <input type="file" id="fileInput" accept="image/png" style="margin-top:5px; font-size: 0.6rem;">
+        <input type="text" id="username" placeholder="Username">
+        <button id="fetchBtn">FETCH SKIN</button>
+        <input type="file" id="fileInput" accept="image/png" style="font-size: 0.6rem;">
     </div>
     <div class="group">
         <label>Model Mode</label>
@@ -49,17 +40,17 @@
         </select>
     </div>
     <div class="group">
-        <label>Extrusion Depth (3D Pop)</label>
-        <input type="range" id="depthRange" min="0.02" max="0.30" step="0.01" value="0.08">
+        <label>Extrusion Depth</label>
+        <input type="range" id="depthRange" min="0.02" max="0.30" step="0.01" value="0.12">
     </div>
     <div class="group">
-        <label>Export for 3D Printing</label>
+        <label>Color Export</label>
         <select id="exportFormat">
-            <option value="stl">STL (Solid Mesh)</option>
-            <option value="glb">GLB (With Colors)</option>
+            <option value="glb">GLB (Auto-Color Slicers)</option>
+            <option value="stl">STL (No Color)</option>
         </select>
-        <button id="exportBtn" class="secondary">DOWNLOAD MODEL</button>
-        <div id="status">Ready</div>
+        <button id="exportBtn" class="secondary">DOWNLOAD FOR SLICER</button>
+        <div id="status" style="font-size: 0.7rem; color: var(--accent);">Ready</div>
     </div>
 </div>
 
@@ -80,11 +71,7 @@
 
     const controls = new OrbitControls(camera, renderer.domElement);
     camera.position.set(3, 2, 5);
-
-    scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-    const dLight = new THREE.DirectionalLight(0xffffff, 0.4);
-    dLight.position.set(5, 10, 5);
-    scene.add(dLight);
+    scene.add(new THREE.AmbientLight(0xffffff, 1.0));
 
     const mainGroup = new THREE.Group();
     scene.add(mainGroup);
@@ -98,7 +85,7 @@
         ctx.drawImage(img, x, y, w, h, 0, 0, w, h);
         const t = new THREE.CanvasTexture(c);
         t.magFilter = THREE.NearestFilter;
-        return new THREE.MeshStandardMaterial({ map: t, transparent: true });
+        return new THREE.MeshStandardMaterial({ map: t, roughness: 1 });
     }
 
     function createPart(img, w, h, d, uv, pos, overlayUv) {
@@ -106,15 +93,11 @@
         const depth = parseFloat(document.getElementById('depthRange').value);
 
         const mats = [
-            getMat(img, uv.x+d+w, uv.y+d, d, h),
-            getMat(img, uv.x, uv.y+d, d, h),
-            getMat(img, uv.x+d, uv.y, w, d),
-            getMat(img, uv.x+d+w, uv.y, w, d),
-            getMat(img, uv.x+d, uv.y+d, w, h),
-            getMat(img, uv.x+d*2+w, uv.y+d, w, h)
+            getMat(img, uv.x+d+w, uv.y+d, d, h), getMat(img, uv.x, uv.y+d, d, h),
+            getMat(img, uv.x+d, uv.y, w, d), getMat(img, uv.x+d+w, uv.y, w, d),
+            getMat(img, uv.x+d, uv.y+d, w, h), getMat(img, uv.x+d*2+w, uv.y+d, w, h)
         ];
-        const base = new THREE.Mesh(new THREE.BoxGeometry(w/8, h/8, d/8), mats);
-        partGroup.add(base);
+        partGroup.add(new THREE.Mesh(new THREE.BoxGeometry(w/8, h/8, d/8), mats));
 
         if (overlayUv) {
             const tempCanvas = document.createElement('canvas');
@@ -125,7 +108,7 @@
                 if(data[i*4+3] > 10) {
                     const vox = new THREE.Mesh(
                         new THREE.BoxGeometry(1/8, 1/8, depth),
-                        new THREE.MeshStandardMaterial({ color: new THREE.Color(`rgb(${data[i*4]},${data[i*4+1]},${data[i*4+2]})`) })
+                        new THREE.MeshStandardMaterial({ color: new THREE.Color(`rgb(${data[i*4]},${data[i*4+1]},${data[i*4+2]})`), roughness: 1 })
                     );
                     let px = i%w, py = Math.floor(i/w);
                     vox.position.set((px/8)-(w/16)+0.0625, (h/16)-(py/8)-0.0625, (d/16)+(depth/2));
@@ -141,7 +124,6 @@
         if(!currentImg) return;
         mainGroup.clear();
         const mode = document.getElementById('modelMode').value;
-
         if(mode === 'head') {
             createPart(currentImg, 8, 8, 8, {x:0, y:0}, {x:0, y:0, z:0}, {x:32, y:0});
         } else {
@@ -152,7 +134,6 @@
             createPart(currentImg, 4, 12, 4, {x:0, y:16}, {x:-0.25, y:-1.5, z:0}, {x:0, y:32});
             createPart(currentImg, 4, 12, 4, {x:16, y:48}, {x:0.25, y:-1.5, z:0}, {x:0, y:48});
         }
-        document.getElementById('status').innerText = "Model Built!";
     }
 
     document.getElementById('fetchBtn').onclick = () => {
@@ -180,11 +161,12 @@
         const format = document.getElementById('exportFormat').value;
         if(format === 'stl') {
             const exporter = new STLExporter();
-            const blob = new Blob([exporter.parse(mainGroup, {binary:true})], {type:'application/octet-stream'});
-            save(blob, 'skin_model.stl');
+            save(new Blob([exporter.parse(mainGroup, {binary:true})], {type:'application/octet-stream'}), 'skin.stl');
         } else {
             const exporter = new GLTFExporter();
-            exporter.parse(mainGroup, (res) => save(new Blob([JSON.stringify(res)], {type:'application/json'}), 'skin_model.gltf'));
+            exporter.parse(mainGroup, (res) => {
+                save(new Blob([JSON.stringify(res)], {type:'application/json'}), 'skin.gltf');
+            });
         }
     };
 
